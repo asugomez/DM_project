@@ -1,0 +1,192 @@
+---
+title: "exploracion_dataset_mayo_2020"
+output: html_document
+date: '2022-04-06'
+---
+
+Primero leemos el dataset
+
+```{r}
+casas <- read.csv("/Users/asugomez/Desktop/DCC 2022/Mineria de Datos/Proyecto/csv/casas_usadas_mayo_2020.csv", sep=";", fileEncoding = "latin1", header = TRUE)
+head(casas)
+```
+
+Una vez abierto, veamos un resumen del dataset
+
+```{r}
+summary(casas)
+```
+
+```{r}
+str(casas)
+```
+
+Vemos que hay datos expresados como "chr" que sería más útil tener como "factor" o "int" (superficie, estacionamientos, superficie). Estudiemos el motivo de esto
+
+```{r}
+unique(casas$Total_Superficie_M2)
+```
+
+```{r}
+unique(casas$N_Estacionamientos)
+table(casas$N_Estacionamientos)
+```
+
+```{r}
+unique(casas$Superficie_Construida_M2)
+```
+
+```{r}
+unique(casas$Tipo_Vivienda)
+```
+
+Vemos que la columna "Tipo_Vivienda" no tiene más de un valor (ie, podemos dropearla). Nos conviene modificar las columnas Total_Superficie_M2, N_Estacionamientos, Superficie_Construida_M2 a numerico.
+
+```{r}
+casas$Total_Superficie_M2 <- chartr(",",".",casas$Total_Superficie_M2) #cambiamos las comas por puntos
+casas <- transform(casas, Total_Superficie_M2 = as.numeric(Total_Superficie_M2)) #modificamos el tipo de la columna
+unique(casas$Total_Superficie_M2)
+```
+
+```{r}
+casas$N_Estacionamientos <- replace(casas$N_Estacionamientos, casas$N_Estacionamientos=="No", "0")
+casas <- transform(casas, N_Estacionamientos = as.numeric(N_Estacionamientos))
+unique(casas$N_Estacionamientos)
+```
+
+```{r}
+casas$Superficie_Construida_M2 <- chartr(",",".",casas$Superficie_Construida_M2)
+casas$Superficie_Construida_M2 <- chartr(" ha", "0000", casas$Superficie_Construida_M2)
+casas <- transform(casas, Superficie_Construida_M2 = as.numeric(Superficie_Construida_M2))
+unique(casas$Superficie_Construida_M2)
+```
+
+Ahora que hemos re-formateado el dataset, veamos nuevamente un resumen
+
+```{r}
+```
+
+
+```{r}
+summary(casas)
+```
+
+```{r}
+str(casas)
+```
+
+Estudiemos las medidas de tendencia central para el número de estacionamientos
+
+```{r}
+frecs_estacionamiento <- table(casas$N_Estacionamientos)
+moda <- which(frecs_estacionamiento == max(frecs_estacionamiento)) #Obtenemos el valor con mayor frecuencia
+names(moda) #obtenemos el valor de la moda
+```
+
+Estudiemos las MTC para el total_superficie_mt2
+
+```{r}
+total_superficie <- casas$Total_Superficie_M2
+mean(total_superficie, na.rm=TRUE)
+median(total_superficie, na.rm=TRUE)
+```
+
+Tenemos una media muy alejada de la moda. Obtengamos la media sin los valores 10% más extemos.
+
+```{r}
+mean(total_superficie, na.rm=TRUE, trim=0.1)
+```
+
+Para la superficie construida también tenemos una media alejada de la mediana. Veamos quitando outliers
+
+```{r}
+mean(casas$Superficie_Construida_M2, na.rm=TRUE, trim=0.1)
+```
+
+Obtenemos un valor mucho más cercano a la mediana
+
+**Medidas de dispersion**
+Primero veamos la dispersión de la superficie total construida
+```{r}
+superficie = casas$Total_Superficie_M2
+var(superficie, na.rm=TRUE)
+sd(superficie, na.rm=TRUE)
+mad(superficie, na.rm=TRUE)
+```
+Hacemos lo mismo para la superficie total construida y precio
+```{r}
+superficie_construida = casas$Superficie_Construida_M2
+var(superficie_construida, na.rm=TRUE)
+sd(superficie_construida, na.rm=TRUE)
+mad(superficie_construida, na.rm=TRUE)
+```
+```{r}
+valor = casas$Valor_CLP
+var(valor, na.rm=TRUE)
+sd(valor, na.rm=TRUE)
+mad(valor, na.rm=TRUE)
+```
+
+```{r}
+table(casas$N_Habitaciones)
+```
+
+
+
+***Medidas Multivariable ***
+Ahora estudiemos la relación entre variables
+
+```{r}
+
+```
+
+```{r}
+casas_numeric = casas[,4:10]
+cov(casas_numeric, use="complete")
+cor(casas_numeric, use="complete")
+```
+Debido a valores faltantes, no obtenemos una matriz correcta. Rellenaremos los valores faltantes con el promedio 
+Con esto, podemos generar algunos gráficos para estudiar las medidas de tendencia central.
+
+```{r}
+library(ggplot2)
+
+#Estudiemos el precio vs el número de baños
+ggplot(casas, aes(x=as.factor(N_Baños), y=Valor_CLP)) +
+  geom_boxplot()+
+  labs(title="Dispersion precio vs n° de baños", x="Número de baños", y="Valor (CLP)")
+
+#Estudiemos el precio vs el número de estacionamientos
+ggplot(casas, aes(x=as.factor(N_Estacionamientos), y=Valor_CLP)) +
+  geom_boxplot()+
+  labs(title="Dispersion precio vs n° de estacionamientos", x="Número de estacionamientos", y="Valor (CLP)")
+```
+
+Observemos la relación entre superficie construida y valor en UF
+```{r}
+ggplot(casas, aes(x=as.factor(N_Habitaciones), y=Valor_UF)) +
+  geom_boxplot()+
+  labs(title="Dispersion precio vs n° de habitaciones", x="Número de habitaciones", y="Valor (UF)")
+
+
+ggplot(casas, aes(x=N_Habitaciones, y=Valor_UF)) +
+  geom_point()+
+  labs(title="Dispersion habitaciones vs precio en UF", x="Número de habitaciones", y="Valor (UF)")
+```
+```{r}
+# Dispersion superficie construida vs valor uf
+casas_filtered <- casas[casas$Superficie_Construida_M2<1e5,]
+ggplot(casas_filtered, aes(x=Superficie_Construida_M2, y=Valor_UF)) +
+  geom_point()+
+  labs(title="Dispersion superficie construida vs valor en UF", x="Superficie construida (M2)", y="Valor (UF)")
+
+ggplot(casas[casas$Superficie_Construida_M2<1000,], aes(x=Superficie_Construida_M2, y=Valor_UF)) +
+  geom_point()+
+  labs(title="Dispersion superficie construida vs valor en UF", x="Superficie construida (M2)", y="Valor (UF)")
+
+ggplot(casas[casas$Superficie_Construida_M2<750,], aes(x=Superficie_Construida_M2, y=Valor_UF, color=N_Baños)) +
+  geom_point()+
+  labs(title="Dispersion superficie construida vs valor en UF", x="Superficie construida (M2)", y="Valor (UF)")
+
+
+```
